@@ -1,13 +1,44 @@
 from maya import cmds
 
+"""
+Script Name: TweenWindow.py
+Author: Ram Yogeshwaran
+Company: The Mill
+Contact: Ram.Yogeshwaran@themill.com
+Description: This script provides functionality for tweening keyframes in Maya.
+"""
+
+ATTRIBUTES = {
+    "translateX":"tx",
+    "translateY":"ty",
+    "translateZ":"tz",
+    "rotateX":"rx",
+    "rotateY":"ry",
+    "rotateZ":"rz",
+    "scaleX":"sx",
+    "scaleY":"sy",
+    "scaleZ":"sz",
+}
+
 class TweenWindow(object):
+    """
+    Methods:
+        __init__: Initializes the TweenWindow class.
+        tween: Creates an in-between keyframe based on the percentage, attribute selected, and surrounding keyframes.
+        show: Displays the window UI.
+        buildUI: Builds the UI elements for the window.
+        resetSlider: Resets the slider to its default value.
+        buildOptions: Builds the attribute selection menu.
+        changeAttribute: Handles attribute selection changes.
+    """
 
     def __init__(self):  #we initialzie the variables that we'll be using
-        self.windowName = "TweenWindow" #make sure there is no space when creating the window Names!
+        self.windowName = "TweenerWindow" #make sure there is no space when creating the window Names!
+        self.attr= None
     
-    def tween(self,percentage,obj=None, attr = None , selection=True):
+    def tween(self,percentage,obj=None, selection=True):
         """
-        This function will created an inbetween keyframe based on the percentage , attribute selected and the previous+next keyframes from the current frame.
+        This function will create an inbetween keyframe based on the percentage , attribute selected and the previous+next keyframes from the current frame.
 
         Args:
         percentage : percentage to Tween the keyframe
@@ -26,18 +57,17 @@ class TweenWindow(object):
             obj = selected_objects[0]
         
         # If attr is provided, use it directly; otherwise, list all keyable attributes
-        if not attr:
+        if not self.attr:
             attrs = cmds.listAttr(obj, keyable=True)
             if not attrs:
                 raise ValueError("No keyable attributes found on the specified object")
         else:
-            attrs = [attr]
+            attrs = [self.attr]
         
         #get the current keyframe and store it
         currentTime= cmds.currentTime(query=True)
 
         #go through the attribute with the keyframes
-        
         for attr in attrs:
             self.attrName = "{0}.{1}".format(obj,attr)#store the attribute name in format (objName.attribute)
 
@@ -112,11 +142,13 @@ class TweenWindow(object):
 
     def resetSlider(self, *args): #we use *args to collect any unwanted parameters that will be passed during function call
         cmds.floatSlider(self.slider, edit=True, value= 50)
+        self.tween(50)
     
     def buildOptions(self, attr1=None, obj2 = None, selection = True):
-        
-        self.menuName = "attributeLists"
-        cmds.optionMenu( self.menuName, label='Attributes Affected')
+        #create a new menu
+        self.menuName = "attributeLists" #name of the menu to be referred
+        self.selectedOption = None #default option selected
+        cmds.optionMenu( self.menuName, label='Attributes Affected', cc = self.changeAttribute) #new optionMenu is created which calls a func everytime it changes the menu.
       
 
         #checks if obj and selection is present
@@ -136,17 +168,41 @@ class TweenWindow(object):
         else:
             attrs1 = [attr1]
             
-        cmds.menuItem( label='All Tweenable', parent = self.menuName )
+        cmds.menuItem( label='All Tweenable', parent = self.menuName )#first menu item is created
         
-        for attrOpt in attrs1:
+        for attrOptions in attrs1:
 
-            self.attrName1 = "{0}.{1}".format(obj2,attrOpt)#store the attribute name in format (objName.attribute)
+            self.attrName1 = "{0}.{1}".format(obj2,attrOptions)#store the attribute name in format (objName.attribute)
 
             #lets check if the given attribute has any keyframes. we use cmds.keyframe for that. It will return a list of keyframes if there are any present.
             if cmds.keyframe(self.attrName1,query=True):
-                cmds.menuItem(label = attrOpt , parent = self.menuName)
-        
+                cmds.menuItem(label = attrOptions , parent = self.menuName) #create MenuItems for the all other attributes with keyframes!
+            
+            
+    def changeAttribute(self,*args):
+        self.selectedOption = cmds.optionMenu(self.menuName, query=True, value=True) #queries the active option selected in the menu and stores it in a variable
+        self.attr = ATTRIBUTES.get(self.selectedOption,None) #assigns a value to the self.attr if selected option matches with the global ATTRIBUTES dictionaries!
+
 
 if __name__=="__main__":
-    t1 = TweenWindow()
-    t1.show()
+    t1 = TweenWindow() #create instance of the class  
+    t1.show() #call the show() in the instance
+
+
+
+"""
+MIT License
+
+Copyright (c) 2024 Ram Yogeshwaran
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
