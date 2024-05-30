@@ -1,5 +1,3 @@
-from maya import cmds
-
 """
 Script Name: TweenWindow.py
 Author: Ram Yogeshwaran
@@ -7,6 +5,7 @@ Company: The Mill
 Contact: Ram.Yogeshwaran@themill.com
 Description: This script provides functionality for tweening keyframes in Maya.
 """
+from maya import cmds
 
 ATTRIBUTES = {
     "translateX":"tx",
@@ -109,7 +108,7 @@ class TweenWindow(object):
         if cmds.window(self.windowName, query=True, exists=True):  # checks if the window exists already
             print("Deleting UI")
             cmds.deleteUI(self.windowName) #if yes , then delete already existing ones
-        cmds.window(self.windowName,  widthHeight=(250, 98), s = False , nde = True)
+        cmds.window(self.windowName,  widthHeight=(215, 90), s = False , nde = True)
         self.buildUI() #call another method that builds the UI for this window
         cmds.showWindow()
         
