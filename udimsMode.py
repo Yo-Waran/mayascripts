@@ -1,5 +1,5 @@
 """
-Script Name: gearCreator.py
+Script Name: udimsMode.py
 Author: Ram Yogeshwaran
 Company: The Mill
 Contact: Ram.Yogeshwaran@themill.com
