@@ -59,11 +59,10 @@ class ASSEXPORT():
             cmds.arnoldExportAss(f=file_path, mask=255+2048,shg=True, s=True)
             om.MGlobal.displayInfo("Exported Files Succesfully")
             self.message = "Exported Files Succesfully!"
-        self.messageDisplay()
+        cmds.text(self.message)
+
 
     
-    def messageDisplay(self,*args):
-        cmds.text(self.message)
 
 
 if __name__=="__main__":
