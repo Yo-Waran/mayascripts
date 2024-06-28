@@ -17,6 +17,7 @@ ATTRIBUTES = {
     "scaleX":"sx",
     "scaleY":"sy",
     "scaleZ":"sz",
+    "visibility":"v"
 }
 
 class TweenWindow(object):
@@ -29,6 +30,8 @@ class TweenWindow(object):
         resetSlider: Resets the slider to its default value.
         buildOptions: Builds the attribute selection menu.
         changeAttribute: Handles attribute selection changes.
+        halfValue : sets a key with exactly half value at the current time
+        deleteFrame :Deletes the keyframes of selected attributes in the current time
     """
 
     def __init__(self):  #we initialzie the variables that we'll be using
@@ -108,7 +111,7 @@ class TweenWindow(object):
         if cmds.window(self.windowName, query=True, exists=True):  # checks if the window exists already
             print("Deleting UI")
             cmds.deleteUI(self.windowName) #if yes , then delete already existing ones
-        cmds.window(self.windowName,  widthHeight=(215, 90), s = False , nde = True)
+        cmds.window(self.windowName, s = False , nde = True)
         self.buildUI() #call another method that builds the UI for this window
         cmds.showWindow()
         
@@ -128,10 +131,11 @@ class TweenWindow(object):
         cmds.text("Use this Slider to create your Tween Keys")
         
         #make a row layout inside the column layout
-        row2 = cmds.rowLayout(numberOfColumns= 2) # you need to specify the number of columns
+        row2 = cmds.rowLayout(numberOfColumns= 4) # you need to specify the number of columns
         self.slider = cmds.floatSlider(min = 0, max = 100, value=50 , step = 1 , dragCommand = self.tween) #create a slider that sets the tween percentage for the tween() method. (dragCommand/changeCommand is used to pass a value into the tween function )
         cmds.button(label="Reset", command = self.resetSlider) #creates a button that calls the reset slider function
-
+        cmds.button(label="Half Value",command = self.halfValue) #creates a button that calls the halfValye method
+        cmds.button(label = "Delete",command = self.deleteFrame)
         #go back to the parent column
         cmds.setParent(column)
 
@@ -141,7 +145,26 @@ class TweenWindow(object):
 
     def resetSlider(self, *args): #we use *args to collect any unwanted parameters that will be passed during function call
         cmds.floatSlider(self.slider, edit=True, value= 50)
+
+    def halfValue(self, *args): #we use *args to collect any unwanted parameters that will be passed during function call
+        cmds.floatSlider(self.slider, edit=True, value= 50)
         self.tween(50)
+
+    def deleteFrame(self,*args): 
+        current_time = cmds.currentTime(query=True) #get current Time
+        try:
+            selected_objects = cmds.ls(selection=True)[0]
+            selected_attr = self.attr #get selected attribute
+            if selected_attr: #if there is one attribute selected
+                cmds.cutKey("{0}.{1}".format(selected_objects,selected_attr), time=(current_time, current_time))
+                    
+            if not selected_attr:  #if there are more attributes selected
+                selected_attr = cmds.listAttr(selected_objects, keyable=True)
+                for attr in selected_attr:
+                    cmds.cutKey("{0}.{1}".format(selected_objects,attr), time=(current_time, current_time))
+        except IndexError:
+            cmds.warning("No attribute selected to delete keyframe.")
+
     
     def buildOptions(self, attr1=None, obj2 = None, selection = True):
         #create a new menu
