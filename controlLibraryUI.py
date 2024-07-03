@@ -31,7 +31,7 @@ class ControllerLibraryUI(QtWidgets.QDialog):
         #directory layout
         dirLayout = QtWidgets.QHBoxLayout()
         self.dirLabel = QtWidgets.QLabel("Files Directory : " + self.library.directory)
-        browseBtn = QtWidgets.QPushButton("change")
+        browseBtn = QtWidgets.QPushButton("change (WIP)")
         browseBtn.clicked.connect(self.changeFolder)
         dirLayout.addWidget(self.dirLabel)
         dirLayout.addWidget(browseBtn)
