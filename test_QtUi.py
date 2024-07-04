@@ -13,6 +13,22 @@ class TestApp(QtWidgets.QWidget):
         layout.addWidget(self.ui)
         self.setLayout(layout)
 
+        #initialize
+        self.percent = self.ui.lb_percent
+        value = str(self.ui.sld_slider.value()) + " %"
+        self.percent.setText(value)
+
+        self.ui.button.setText("Click Me!")
+        
+        #connections
+        self.ui.sld_slider.valueChanged.connect(self.updateUI)
+
+    def updateUI(self):
+        value = str(self.ui.sld_slider.value()) + " %"
+        self.percent.setText(value)
+        
+
+
 
 
 if __name__ == "__main__":
