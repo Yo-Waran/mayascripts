@@ -7,9 +7,21 @@ import pymel.core as pm
 
 from PySide6 import QtWidgets, QtCore,QtGui
 
+from shiboken6 import wrapInstance
+
 from functools import partial
 
 import logging #log module
+
+import maya._OpenMayaUI as omui
+
+import pprint
+
+import os
+
+import json #reading and writing data
+
+import time
 
 logging.basicConfig() #sets up basic configuration for our logging
 logger = logging.getLogger('LightingManager') #storing Lighting Manager logger 
@@ -30,9 +42,23 @@ else:
     from QtCore import Signal
 
 '''
+def getMayaMainWindow():
+    win = omui.MQtUtil_mainWindow() #returns the memory address of main window
+    ptr = wrapInstance(int(win),QtWidgets.QMainWindow) #convert memory address to a long integer
+    return ptr
 
+def getDock(name = "LightingManagerDock"):
+    deleteDock(name) #check if exists already and delete accordingly
+    ctrl = pm.workspaceControl(name , dockToMainWindow = ('right',0),label = "Lighting Manager") #docks the window in the right at first
+    qtctrl = omui.MQtUtil_findControl(ctrl) #returns the memory address of our new dock
+    ptr = wrapInstance(int(qtctrl),QtWidgets.QWidget) #convert memory address to a long integer
+    return ptr
 
-class LightManager(QtWidgets.QDialog):
+def deleteDock(name = "LightingManagerDock"):
+    if pm.workspaceControl(name,query = True, exists = True):
+        pm.deleteUI(name)
+    
+class LightManager(QtWidgets.QWidget):
 
     lightTypes = {
         "Point Light" : pm.pointLight, #function to be called
@@ -43,16 +69,36 @@ class LightManager(QtWidgets.QDialog):
     }
     
 
-    def __init__(self):
+    def __init__(self,dockable = True):
 
-        super(LightManager,self).__init__() #call parent init of QDialog
-        self.setWindowTitle("Lights Manager")
+        if dockable:
+            parent = getDock() #parent is set to the empty dock
+        else:
+
+            deleteDock() #delete the empty dock
+            try:
+                pm.deleteUI('LightingManager') #if it exists delete it
+            except:
+                logger.debug("No Previous UI Exists")
+                
+            parent = QtWidgets.QDialog(parent=getMayaMainWindow()) #creates a new QDialog on the main window
+            parent.setObjectName('LightingManager') #set the name for the dialog
+            parent.setWindowTitle('Lighting Manager') #set the title 
+            layout = QtWidgets.QVBoxLayout(parent) #add a layout to it
+
+
+        super(LightManager,self).__init__(parent=parent) #call parent init of QDialog
 
         logger.debug("Initialzing Light Manager Class") #log statements for debugging purpose
         self.buildUI()
         logger.debug("Running Light Manager build UI")
         self.populate()#populate using existing lights
         logger.debug("Populating Light Manager with lights on scene")
+
+        self.parent().layout().addWidget(self)  #adds our manager to the parent layout
+        if not dockable:
+            parent.show() #show our parent 
+        self.directory = None
 
     def populate(self):
 
@@ -61,11 +107,11 @@ class LightManager(QtWidgets.QDialog):
         while self.scrollLayout.count(): #while scroll layout can count its children
             widget  = self.scrollLayout.takeAt(0).widget() #get the child at position 0 to get its widget
             if widget:
-                widget.setVisible(False)
-                widget.deleteLater()
+                widget.setVisible(False) #hide them
+                widget.deleteLater() #delete them 
 
         for light in pm.ls(type=['areaLight','spotLight','pointLight','directionalLight','volumeLight']): #iterate through all lights
-            self.addLight(light) #then we call the add light function for each lights present
+            self.addLight(light) #then we call the add light function for each lights present from scratch
             
 
     def buildUI(self):
@@ -78,11 +124,11 @@ class LightManager(QtWidgets.QDialog):
             self.lightTypeCB.addItem(lightType) #add items for each key
 
 
-        main_layout.addWidget(self.lightTypeCB,0,0)  #add it to main layout at 0,0 = (x,y) position
+        main_layout.addWidget(self.lightTypeCB,0,0,1,2)  #add it to main layout at 0,0 = (x,y) position
         
         #createBtn
         createBtn = QtWidgets.QPushButton("Create") #button for creating light
-        main_layout.addWidget(createBtn,0,1) #add the button at 0,1 position in the grid
+        main_layout.addWidget(createBtn,0,2) #add the button at 0,1 position in the grid
         #connect the button
         createBtn.clicked.connect(self.createLight) 
 
@@ -95,24 +141,37 @@ class LightManager(QtWidgets.QDialog):
         scrollArea = QtWidgets.QScrollArea() #add a scroll area
         scrollArea.setWidgetResizable(True) #make it resizable
         scrollArea.setWidget(scrollWidget) #add the scrollwidget inside the scroll area
-        main_layout.addWidget(scrollArea,1,0,1,2) #1 = second row, 0 = 1st column, 1=  size of row , 2 = size of columns
+        main_layout.addWidget(scrollArea,1,0,1,3) #1 = second row, 0 = 1st column, 1=  size of row , 2 = size of columns
+
+        #save btn
+        saveBtn = QtWidgets.QPushButton("Save")
+        saveBtn.clicked.connect(self.saveLight) #connect
+        main_layout.addWidget(saveBtn,2,0)  #add it to main layout
+
+        #import btn
+        importBtn = QtWidgets.QPushButton("Import")
+        importBtn.clicked.connect(self.importLight) #connect
+        main_layout.addWidget(importBtn,2,1) #add it to main layout
 
         #refresh Btn
         refreshBtn = QtWidgets.QPushButton('Refresh')
         refreshBtn.clicked.connect(self.populate) #call populate again
-        main_layout.addWidget(refreshBtn,2,1) #add the button at 3rd row , 2nd column
+        main_layout.addWidget(refreshBtn,2,2) #add the button at 3rd row , 2nd column
     
-    def createLight(self):
-        selLightType = self.lightTypeCB.currentText() #get the selected text in combo box
+    def createLight(self,selLightType = None,add = True):
+        if not selLightType:
+            selLightType = self.lightTypeCB.currentText() #get the selected text in combo box
         func= self.lightTypes[selLightType] #get the function value from key
 
         light = func() #call the function to create the light
-        self.addLight(light) #add the light to the area
+        if add:
+            self.addLight(light) #add the light to the scroll area
         
+        return light
 
     def addLight(self,light): #function to add the light widget
         #add the light to scroll area
-        widget = LightWidget(light) #make a new Instance of lightWidget . Makes a check box
+        widget = LightWidget(light) #make a new Instance of lightWidget .
         self.scrollLayout.addWidget(widget)  #add that check box to scroll layout 
         widget.onSolo.connect(self.isolate) #call a function when that signal is emitted
 
@@ -121,7 +180,70 @@ class LightManager(QtWidgets.QDialog):
         for widget in lightWidgets: #iterate through all lightWidgets
             if widget != self.sender(): #find the ones not emitting signal
                 widget.disableLight(value) #new function that disables the light
+                widget.setEnabled(not value)  #greys out other lights
 
+    def saveLight(self):
+        properties = {} #empty dict to collect data
+        for lightWidget in self.findChildren(LightWidget): #iterate through all light widgets
+            light = lightWidget.light #get the actual light
+            transform = light.getTransform() #get transform node of that light
+
+            #writing data to dict
+            properties[str(transform)] = {
+                'translate' : list(transform.translate.get()),
+                'rotation' : list(transform.rotate.get()),
+                'lightType': pm.objectType(light),
+                'intensity' : light.intensity.get(),
+                'color': light.color.get()
+            }
+        
+        def_directory = os.path.join(pm.internalVar(userAppDir = True),'lightManager') #add lightManager folder to the user directory
+        if not os.path.exists(def_directory): #if doesnt exist
+            os.mkdir(def_directory) #make it
+
+        self.directory = QtWidgets.QFileDialog.getExistingDirectory(self,"Where do you wanna save?", )
+        lightFile = os.path.join(self.directory,'lightFile_{0}.json'.format(time.strftime('%d%m%H%M%S'))) #make a json file path based on the current day %d month %m and year %y
+
+        with open(lightFile,'w') as f: #open the file
+            json.dump(properties,f,indent = 4) #write properties dict on the file and indent by 4 spaces
+        
+        logger.info('Saving File to {0}'.format(lightFile))
+
+    def importLight(self):
+        def_directory = os.path.join(pm.internalVar(userAppDir = True),'lightManager') #add lightManager folder to the user directory
+        if not self.directory:
+            self.directory = def_directory
+        fileName = QtWidgets.QFileDialog.getOpenFileName(self,"Select your json",self.directory) #file dialog for user to choose a file
+        with open (fileName[0],'r') as f:
+            properties = json.load(f) #save the json dict from the file into a variable
+
+        #recreating lights
+        for light,info in properties.items():#iterating through the data
+            lt = info.get('lightType')
+            for lightType in self.lightTypes: #iterate through our lightTypes dict
+                #check if the lightType in our dict and the data's type match
+                if lt == ('{0}Light'.format(lightType.split()[0].lower())): #if they match
+                    break
+
+            else: #if not thing found from our LightTypes dict
+                logger.info("cannot find a corresponding light type for {0}:{1}".format(light,lt))
+                continue
+
+            light = self.createLight(selLightType = lightType) #create the light with our function
+            light.intensity.set(info.get('intensity'))#set the intensity
+            light.color.set(info.get('color'))#set color
+
+            transform = light.getTransform() #store the transform node
+
+            #set transforms
+            transform.translate.set(info.get('translate'))
+            transform.rotate.set(info.get('rotation')) 
+            print('created {0}'.format(light))
+
+        #refresh ui
+        self.populate()
+
+            
 
 class LightWidget(QtWidgets.QWidget):
     onSolo = QtCore.Signal(bool) #makes a new signal 
@@ -129,6 +251,10 @@ class LightWidget(QtWidgets.QWidget):
         super(LightWidget,self).__init__() #call init of QWidget
         if isinstance(light , str): #if light is a string
             light = pm.PyNode(light) #convert it to pyNode so that we can work with PyMel
+        
+        #check if its a transform
+        if isinstance(light,pm.nodetypes.Transform):
+            light = light.getShape()
 
         self.light = light #save the light
         self.buildUI() #call function to build UI
@@ -148,13 +274,16 @@ class LightWidget(QtWidgets.QWidget):
         soloBtn = QtWidgets.QPushButton('Solo') #create a btn
         soloBtn.setCheckable(True) #makes it work like a switch  
         soloBtn.toggled.connect(lambda val: self.onSolo.emit(val)) #sets a signal of True or false based on the toggle
+        soloBtn.setStyleSheet('background-color:rgba({0},{1},{2},1.0)'.format(0,0,255)) #set color
         layout.addWidget(soloBtn,0,1) #add it to the layout
 
         #DELETEBTN
         deleteBtn = QtWidgets.QPushButton("X")
         deleteBtn.clicked.connect(self.deleteLight) #function to delete the widget
         deleteBtn.setMaximumWidth(100)#set maximum
+        deleteBtn.setStyleSheet('background-color:rgba({0},{1},{2},1.0)'.format(255,0,0)) #set color
         layout.addWidget(deleteBtn,0,2) #add it at 3rd column
+
 
         #INTENSITY_SLIDER
         intensity = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -207,10 +336,4 @@ class LightWidget(QtWidgets.QWidget):
     def disableLight(self,val):
         self.name.setChecked(not val) #pass opposite of what value is!
 
-def showUI(): #function to create instance of the class
-    ui = LightManager()
-    ui.show()
-    return ui
-
-UI = showUI() #store the UI in a variable
-
+LightManager() #setting it false
