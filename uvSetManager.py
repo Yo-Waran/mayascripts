@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 
-from PySide2 import QtCore
+from PySide6 import QtCore
 
-from PySide2.QtWidgets import QPushButton,QLineEdit,QWidget,QMainWindow,QGridLayout
+from PySide6.QtWidgets import QPushButton,QLineEdit,QWidget,QMainWindow,QGridLayout
 
 class UVSetCreator(QMainWindow):
     def __init__(self):
@@ -18,7 +18,7 @@ class UVSetCreator(QMainWindow):
         self.input = QLineEdit()
         central_layout.addWidget(self.input,0,0)
 
-        self.input.setPlaceholderText("Type the name for your UV Sets")
+        self.input.setPlaceholderText("Type the name for your new UV Set")
 
         #create button
         createBtn = QPushButton("Create New Set and Copy UVs from map1")
@@ -29,7 +29,7 @@ class UVSetCreator(QMainWindow):
         central_layout.addWidget(deleteBtn,1,0,1,2)
 
         #transfer button
-        transferBtn = QPushButton("Transfer UVs and Delete History")
+        transferBtn = QPushButton("Multiple mesh UV Transfer and Delete History")
         central_layout.addWidget(transferBtn,2,0,1,2)
 
         #connections
@@ -98,5 +98,6 @@ class UVSetCreator(QMainWindow):
 if __name__=="__main__":
     obj =UVSetCreator()
     obj.show()
+
 
 
