@@ -1,4 +1,5 @@
-from PySide2 import QtWidgets,QtCore,QtGui
+import maya.cmds as cmds
 
-print()
-
+val = cmds.HypershadeWindow()
+panels = cmds.getPanel(wf=True)
+print(panels)

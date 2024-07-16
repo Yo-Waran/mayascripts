@@ -4,7 +4,7 @@ class TestApp(QtWidgets.QWidget):
     def __init__(self):
         super(TestApp, self).__init__()
         central_Widget = QtWidgets.QWidget()
-        ui_path = "/Users/ramyogeshwaran/Documents/Yogi/GitHub Repo/QtUi/test.ui"  # Replace with the path to your .ui file
+        ui_path = "/Users/ramyogeshwaran/Documents/Yogi/GitHub Repo/QtUi/Shader_Creator.ui"  # Replace with the path to your .ui file
         self.ui = QtUiTools.QUiLoader().load(ui_path, parentWidget=self)
         self.setWindowTitle("Test App")
         
@@ -18,4 +18,5 @@ class TestApp(QtWidgets.QWidget):
 if __name__ == "__main__":
     win = TestApp()
     win.show()
+
 
