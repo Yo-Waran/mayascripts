@@ -1,14 +1,16 @@
 #importing PyMel
 
-#import sys
-#sys.path.append("/Users/ramyogeshwaran/Library/Preferences/Autodesk/maya/pymel-1.4.1b1")
+import sys
+sys.path.append("/Users/ramyogeshwaran/Library/Preferences/Autodesk/maya/pymel-1.4.1b1")
 
 from glob import glob
 import pymel.core as pm
 
-from PySide2 import QtWidgets, QtCore,QtGui
+from PySide6 import QtWidgets, QtCore,QtGui
+#from PySide2 import QtWidgets, QtCore,QtGui
 
-from shiboken2 import wrapInstance
+from shiboken6 import wrapInstance
+#from shiboken2 import wrapInstance
 
 from functools import partial
 
