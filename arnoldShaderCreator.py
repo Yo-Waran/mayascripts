@@ -1,10 +1,11 @@
 import os
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
-from PySide6 import QtCore, QtUiTools, QtWidgets
-#from PySide2 import QtCore, QtUiTools, QtWidgets
-from shiboken6 import wrapInstance
-#from shiboken2 import wrapInstance
+#from PySide6 import QtCore, QtUiTools, QtWidgets
+from PySide2 import QtCore, QtUiTools, QtWidgets
+#from shiboken6 import wrapInstance
+from shiboken2 import wrapInstance
+import pprint
 
 def getDock(name="ShaderCreatorDock"):
     """
@@ -18,7 +19,7 @@ def getDock(name="ShaderCreatorDock"):
     deleteDock(name)  # Check if exists already and delete accordingly
     cmds.HypershadeWindow() #create a window
     panel = cmds.getPanel(up=True)
-    ctrl = cmds.workspaceControl(name, dockToMainWindow = ('right',0), label="Arnold Shader Creator")  # Docks the window in the right at first
+    ctrl = cmds.workspaceControl(name, dockToPanel = (panel,'right',0), label="Arnold Shader Creator")  # Docks the window in the right at first
     #Ensure that the Hypershade panel is open before running this script, as docking will not work if the target panel is not available.
 
     qtctrl = omui.MQtUtil.findControl(ctrl)  # Returns the memory address of our new dock
@@ -45,6 +46,7 @@ SUFFIXES = {
     '_DSP': 'displacement_path',
     '_MTL': 'metalness_path'
 }
+
 class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
         
         def __init__(self, parent=None):
@@ -56,17 +58,15 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
                 None
             """
             super(ArnoldShaderCreatorWindow, self).__init__(parent)
-            ui_path = "/Users/ramyogeshwaran/Documents/Yogi/GitHub Repo/QtUi/Shader_CreatorWindow.ui"  # Replace with the path to your .ui file
+            ui_path = "/jobs/tvcResources/bangComms/waranr/Scripts/Git_Repository/QtUI/Shader_CreatorWindow.ui"  # Replace with the path to your .ui file
             self.mainWindow = QtUiTools.QUiLoader().load(ui_path, parentWidget=self)
-            layout = QtWidgets.QVBoxLayout(self)
-            layout.addWidget(self.mainWindow)
+            self.layout = QtWidgets.QVBoxLayout(self)
+            self.layout.addWidget(self.mainWindow)
             self.setWindowTitle("Arnold Shader Creator")
-            self.setLayout(layout)
+            self.setLayout(self.layout)
 
             #properties
-            #self.mainWindow.scroll_widget.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum) #doesnt stretch the scroll area
-            #self.mainWindow.scroll_area.setWidgetResizable(True) #make it resizable
-            #self.mainWindow.scroll_area.setWidget(self.mainWindow.scroll_widget) #add the scrollwidget inside the scroll area
+
             #connections
             self.mainWindow.btn_browse.clicked.connect(self.browseFolder) 
             self.mainWindow.input_folderPath.textChanged.connect(self.findPrefixes)
@@ -80,11 +80,20 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
             self.scrollLayout = QtWidgets.QVBoxLayout(scrollWidget) #add vertical layout to it
             self.scrollLayout.setStretch(0,1)
 
-            scrollArea = QtWidgets.QScrollArea() #add a scroll area
-            scrollArea.setWidgetResizable(True) #make it resizable
-            scrollArea.setWidget(scrollWidget) #add the scrollwidget inside the scroll area
-            self.mainWindow.main_layout.addWidget(scrollArea) #1 = second row, 0 = 1st column, 1=  size of row , 2 = size of columns
+            self.scrollArea = QtWidgets.QScrollArea() #add a scroll area
+            self.scrollArea.setWidgetResizable(True) #make it resizable
+            self.scrollArea.setWidget(scrollWidget) #add the scrollwidget inside the scroll area
+            self.scrollArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.mainWindow.main_layout.addWidget(self.scrollArea,1,0) #1 = second row, 0 = 1st column, 1=  size of row , 2 = size of columns
+            # Set the width of the scroll area to match the content's width
+            btn_createAllShaders = QtWidgets.QPushButton("Create All Shaders")
+            btn_createAllShaders.setMinimumHeight(50)
+            #btn_createAllShaders.clicked.connect(self.clickAllButtons)
+            self.layout.addWidget(btn_createAllShaders)
         
+        def clickAllButtons(self):
+            pass
+
         def browseFolder(self):
             """
             This function creates a dialog for the user to choose their texture folder
@@ -100,21 +109,52 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
         
         
         def findPrefixes(self):
+            
+            self.clearWidgets() #clear all the widgets
+            folder_path = self.mainWindow.input_folderPath.text() #get the text from folder
+            print(folder_path)
+            if not folder_path:
+                prefix = "aiStandardSurface"
+                list = []
+                folder_path = ""
+                self.populate(prefix,list,folder_path="")
 
-            #folder_path = self.mainWindow.input_folderPath.text() #get the text from folder
-
-            test1 = []
-            self.populate("hello",test1)
             # Iterate through files in the folder
-            #for filename in os.listdir(folder_path):
-                #pass
-                #find the unique prefixes
+            prefix_files = {}
+            for filename in os.listdir(folder_path):
+                parts = filename.split('.')#split the ext
+                ext = parts[-1]
+                if ext == "exr": #get only exrs
+                    # Build full path
+                    full_path = os.path.join(folder_path, filename)
 
-                #populate the scroll area
+                    #find the unique prefixes
+                    prefix = filename.split('_')[0]
+                    # Add the file to the corresponding prefix list
+                    if prefix not in prefix_files:
+                        prefix_files[prefix] = []
+                    prefix_files[prefix].append(full_path)
+            
+            pprint.pprint(prefix_files)
+            # Populate the scroll area with each prefix and its list
+            for prefix, files in prefix_files.items():
+                self.populate(prefix, files,folder_path)
 
-        def populate(self,prefix,filesList):
-            widget = ArnoldShaderCreator(prefix,filesList)
+            
+
+        def populate(self,prefix,filesList,folder_path):
+            widget = ArnoldShaderCreator(prefix,filesList,folder_path)
             self.scrollLayout.addWidget(widget)
+            self.scrollArea.setFixedWidth(widget.width()) #set the scroll area according to contents
+        
+        def clearWidgets(self):
+            shaderWidgets = self.findChildren(ArnoldShaderCreator)
+            if shaderWidgets:
+                for widget in shaderWidgets:
+                    widget.setVisible(False) #hide them
+                    widget.deleteShaderWidget() #delete the light
+            else:
+                pass
             
 
 
@@ -123,7 +163,7 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
 class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMainWindow
 
 
-    def __init__(self,prefix,filesList,parent =None):
+    def __init__(self,prefix,filesList,folder_path,parent =None):
         """
         This is the Constructor function to initialize layout variables ,dict and also connections for each prefix found.
         Args:
@@ -132,13 +172,12 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
             None
         """
         super(ArnoldShaderCreator, self).__init__(parent=parent)
-        ui_path = "/Users/ramyogeshwaran/Documents/Yogi/GitHub Repo/QtUi/shaderCreator_v2.ui"  # Replace with the path to your .ui file
+        ui_path = "/jobs/tvcResources/bangComms/waranr/Scripts/Git_Repository/QtUI/shaderCreator_v2.ui"  # Replace with the path to your .ui file
         self.myUI = QtUiTools.QUiLoader().load(ui_path, parentWidget=self)
         
         #initialize prefix
         self.prefix = prefix
         self.listOfFiles = filesList
-
         #CONNECTIONS
         self.myUI.btn_createAndAssign.clicked.connect(self.createShaderAndAssign)
         self.myUI.btn_create.clicked.connect(self.createShader)
@@ -156,6 +195,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
         # Set minimum size based on adjusted size
         self.adjustSize()
         self.setMinimumSize(self.size())
+
         #initalize dict for toolbuttons
         self.texturePaths = {
             "baseColor" : None,
@@ -165,6 +205,9 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
             "displacementShader" : None,
         }
 
+        self.findTexturesPath(folder_path) #find textures and assign them
+        self.myUI.lb_shaderName.setText(self.prefix+"_MAT") #set the name
+        
     def createShader(self,assign = False, mesh = None):
         """
         This function creates a shader and calls the connectTextures() to assign textures to it. If assign and mesh is passed , then it will asign the shader to selected mesh
@@ -318,7 +361,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
 
 
         
-    def findTexturesPath(self):
+    def findTexturesPath(self,folder_path):
         # Initialize variables for each texture type
         base_color_path = None
         roughness_path = None
@@ -442,10 +485,15 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
             font = self.myUI.lb_displacement.font()
             font.setStrikeOut(True)
             self.myUI.lb_displacement.setFont(font)
-    
 
 
-
+    def deleteShaderWidget(self):
+        """
+        This function deletes the widget
+        """
+        self.setParent(None) #remove from the layout
+        self.setVisible(False) #make it hidden
+        self.deleteLater() #delete the UI as soon as it can
         
     def updateShaderName(self):
         """
