@@ -2,7 +2,7 @@ import os
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 #from PySide6 import QtCore, QtUiTools, QtWidgets
-from PySide2 import QtCore, QtUiTools, QtWidgets
+from PySide2 import QtCore, QtUiTools, QtWidgets,QtGui
 #from shiboken6 import wrapInstance
 from shiboken2 import wrapInstance
 import pprint
@@ -72,8 +72,12 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
             self.mainWindow.input_folderPath.textChanged.connect(self.findPrefixes)
 
             self.buildUI()
+            self.findPrefixes() #default run it
         
         def buildUI(self):
+            """
+            This function builds additional UI for the Shader Creator Window
+            """
             #scroll widget to scroll through lights created
             scrollWidget = QtWidgets.QWidget() #new empty widget
             scrollWidget.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Maximum) #doesnt stretch the scroll area
@@ -87,12 +91,36 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
             self.mainWindow.main_layout.addWidget(self.scrollArea,1,0) #1 = second row, 0 = 1st column, 1=  size of row , 2 = size of columns
             # Set the width of the scroll area to match the content's width
             btn_createAllShaders = QtWidgets.QPushButton("Create All Shaders")
-            btn_createAllShaders.setMinimumHeight(50)
-            #btn_createAllShaders.clicked.connect(self.clickAllButtons)
+            btn_createAllShaders.setToolTip("Create all the shaders listed above ") 
+            bottom_layout = QtWidgets.QHBoxLayout()
+            btn_createAllShaders.setMinimumHeight(100)
+            custom_font = QtGui.QFont()
+            custom_font.setBold(True)
+            custom_font.setPointSize(15)  # Set to your desired size
+            btn_createAllShaders.setFont(custom_font)
+            cbox_autoConvertTextures = QtWidgets.QCheckBox("Auto Convert Textures to TX")
+            cbox_useExistingTextures = QtWidgets.QCheckBox("Use Existing TX Textures")
+
+            #add to layouts
             self.layout.addWidget(btn_createAllShaders)
+            bottom_layout.addWidget(cbox_autoConvertTextures)
+            bottom_layout.addWidget(cbox_useExistingTextures)
+            self.layout.addLayout(bottom_layout)
+
+
+            #connections
+            btn_createAllShaders.clicked.connect(self.clickAllButtons)
+            cbox_autoConvertTextures.toggled.connect(lambda val : cmds.setAttr("defaultArnoldRenderOptions.autotx",val)) 
+            cbox_useExistingTextures.toggled.connect(lambda val : cmds.setAttr("defaultArnoldRenderOptions.use_existing_tiled_textures",val))
+            
         
         def clickAllButtons(self):
-            pass
+            """
+            This function creates all the shader for the shader widgets
+            """
+            shaderWidgets = self.findChildren(ArnoldShaderCreator)
+            for widget in shaderWidgets:
+                widget.createShader()
 
         def browseFolder(self):
             """
@@ -109,15 +137,17 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
         
         
         def findPrefixes(self):
-            
+            """
+            This function finds the releavant prefixes and populates the shader widgets accordingly.
+            """
             self.clearWidgets() #clear all the widgets
             folder_path = self.mainWindow.input_folderPath.text() #get the text from folder
-            print(folder_path)
             if not folder_path:
                 prefix = "aiStandardSurface"
                 list = []
                 folder_path = ""
                 self.populate(prefix,list,folder_path="")
+                return
 
             # Iterate through files in the folder
             prefix_files = {}
@@ -134,8 +164,7 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
                     if prefix not in prefix_files:
                         prefix_files[prefix] = []
                     prefix_files[prefix].append(full_path)
-            
-            pprint.pprint(prefix_files)
+        
             # Populate the scroll area with each prefix and its list
             for prefix, files in prefix_files.items():
                 self.populate(prefix, files,folder_path)
@@ -143,6 +172,9 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
             
 
         def populate(self,prefix,filesList,folder_path):
+            """
+            This function populates the shaderWidget instances on the scroll area
+            """
             widget = ArnoldShaderCreator(prefix,filesList,folder_path)
             self.scrollLayout.addWidget(widget)
             self.scrollArea.setFixedWidth(widget.width()) #set the scroll area according to contents
@@ -291,14 +323,15 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
         """
 
         # Create a file texture node
-        file_texture = cmds.shadingNode('file', asTexture=True, name='fileTextureNode')
+        texture_name = texture_path.split("/")[-1].split(".")[0]#get the name of the texture
+        file_texture = cmds.shadingNode('file', asTexture=True, name=texture_name+"_FTN")
         
         # Set the file path to the texture node and set it to UDIMS
         cmds.setAttr(file_texture + '.fileTextureName', texture_path, type='string')
         cmds.setAttr(file_texture+".uvTilingMode",3)
         
         # Create a place2dTexture node for UV coordinates
-        place2d = cmds.shadingNode('place2dTexture', asUtility=True, name='place2dTextureNode')
+        place2d = cmds.shadingNode('place2dTexture', asUtility=True, name=texture_name+"_PTN")
         
         # Connect the place2dTexture attributes to the file texture node
         cmds.connectAttr(place2d + '.outUV', file_texture + '.uvCoord')
@@ -315,7 +348,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
         if textureType == "displacementShader":
             #connecting DSP nodes 
             # Create a displacement node
-            disp_shader = cmds.shadingNode('displacementShader', asUtility=True)
+            disp_shader = cmds.shadingNode('displacementShader', asUtility=True,name = texture_name+"_DSN")
             # Connect the file texture to the disp_shader node
             cmds.connectAttr(file_texture + '.outAlpha', disp_shader + '.displacement')
             #Connec the disp_shader to shader
@@ -324,7 +357,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
         elif textureType == "baseColor":  
             #connecting DIF nodes        
             # Create a color correct node
-            color_correct = cmds.shadingNode('aiColorCorrect', asUtility=True, name='correctDIF')
+            color_correct = cmds.shadingNode('aiColorCorrect', asUtility=True, name=texture_name+"_AIC")
             # Connect the file texture to the color correct node
             cmds.connectAttr(file_texture + '.outColor', color_correct + '.input')
             # Connect the color correct node to the shader
@@ -333,7 +366,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
         elif textureType == "specularRoughness":
             #connecting RGH nodes   
             # Create an aiRange node
-            ai_range = cmds.shadingNode('aiRange', asUtility=True, name='rangeRGH')
+            ai_range = cmds.shadingNode('aiRange', asUtility=True, name=texture_name+"_AIR")
             # Connect the file texture to the aiRange node
             cmds.connectAttr(file_texture + '.outColor', ai_range + '.input')
             #Connec the aiRange to shader
@@ -343,7 +376,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
         elif textureType == "metalness":  
             #connecting MTL nodes      
             # Create an aiRange node
-            ai_range = cmds.shadingNode('aiRange', asUtility=True, name='rangeMTL')
+            ai_range = cmds.shadingNode('aiRange', asUtility=True, name=texture_name+"_AIR")
             # Connect the file texture to the aiRange node
             cmds.connectAttr(file_texture + '.outColor', ai_range + '.input')
             #Connec the aiRange to shader  
@@ -353,7 +386,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
         elif textureType == "normalCamera":  
             #connecting NRM nodes        
             # Create an aiNormal node
-            ai_normal = cmds.shadingNode('aiNormalMap', asUtility=True)
+            ai_normal = cmds.shadingNode('aiNormalMap', asUtility=True,name = texture_name+"_AIN")
             # Connect the file texture to the aiRange node
             cmds.connectAttr(file_texture + '.outColor', ai_normal + '.input')
             #Connec the aiRange to shader  
@@ -362,14 +395,16 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
 
         
     def findTexturesPath(self,folder_path):
+        """
+        This function finds the relevant textures path from the given folder path
+        """
         # Initialize variables for each texture type
         base_color_path = None
         roughness_path = None
         normal_path = None
         displacement_path = None
         metalness_path = None
-
-        
+ 
         # Iterate through files in the folder
         for filename in self.listOfFiles:
             # Check each suffix
@@ -620,6 +655,9 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
             self.myUI.lb_displacement.setFont(font)
 
 def createArnoldShaderCreatorWindow():
+    """
+    This function makes an instance of the Arnold Shader Creator Window
+    """
     dock = getDock()
     arnold_shader_creatorWin = ArnoldShaderCreatorWindow(parent=dock)
     dock.layout().addWidget(arnold_shader_creatorWin)
