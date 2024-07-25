@@ -44,7 +44,7 @@ def deleteDock(name="ShaderCreatorDock"):
     if cmds.workspaceControl(name, query=True, exists=True):
         cmds.deleteUI(name)
 
-# Define suffixes for different texture types
+#Define Global Suffixes for various texture types
 SUFFIXES = {
     '_DIF': 'base_color_path',
     '_RGH': 'roughness_path',
@@ -902,7 +902,7 @@ class VP2ShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMain
             assign: bool to check if shader needs to be assigned
             mesh: mesh to assign the shader to.
         Return:
-            
+            None
         """
         #get the name
         shaderName = self.myUI.lb_shaderName.text()
