@@ -1,3 +1,10 @@
+"""
+Script Name: arnoldShaderCreator.py
+Author: Ram Yogeshwaran
+Company: The Mill
+Contact: Ram.Yogeshwaran@themill.com
+Description: This script is used to create Arnold/VP2 shaders in Maya
+"""
 import os
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
@@ -5,7 +12,6 @@ import maya.OpenMayaUI as omui
 from PySide2 import QtCore, QtUiTools, QtWidgets,QtGui
 
 from shiboken2 import wrapInstance
-import pprint
 
 def getDock(name="ShaderCreatorDock"):
     """
@@ -52,10 +58,25 @@ VP2SUFFIX = {
 }
 
 class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
+        """
+        This is a ArnoldShaderCreatorWindow class that lets us create the UI for this tool 
+        
+        Methods:
+            __init__: Initializes the ArnoldShaderCreatorWindow class and connections to certain widget
+            buildUI: builds additional UI for the Shader Creator Window
+            clickAllButtons: This function creates all the shader for the shader widgets
+            browseFolder: This function creates a dialog for the user to choose their texture folder
+            findPrefixes: This function finds the releavant prefixes and populates the shader widgets accordingly.
+            populate: This function populates the Arnold shaderWidget instances on the scroll area
+            populateVP2: This function populates the VP2 shaderWidget instances on the scroll area
+            clearWidgets: This Function clears all the shader widgets in the scroll area
+
+        """
         
         def __init__(self, parent=None):
             """
             This is the Constructor function to initialize all the necessary variables ,dict and also connections
+            
             Args:
                 None
             Return:
@@ -81,6 +102,10 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
         def buildUI(self):
             """
             This function builds additional UI for the Shader Creator Window
+            Args:
+                None
+            Return:
+                None
             """
             #scroll widget to scroll through lights created
             scrollWidget = QtWidgets.QWidget() #new empty widget
@@ -121,6 +146,11 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
         def clickAllButtons(self):
             """
             This function creates all the shader for the shader widgets
+            
+            Args:
+                None
+            Return:
+                None
             """
             arnoldshaderWidgets = self.findChildren(ArnoldShaderCreator)
             for widget in arnoldshaderWidgets:
@@ -132,6 +162,7 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
         def browseFolder(self):
             """
             This function creates a dialog for the user to choose their texture folder
+            
             Args:
                 None
             Return:
@@ -146,6 +177,10 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
         def findPrefixes(self):
             """
             This function finds the releavant prefixes and populates the shader widgets accordingly.
+            Args:
+                None
+            Return:
+                None
             """
             self.clearWidgets() #clear all the widgets
             folder_path = self.mainWindow.input_folderPath.text() #get the text from folder
@@ -191,7 +226,14 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
 
         def populate(self,prefix,filesList,folder_path):
             """
-            This function populates the shaderWidget instances on the scroll area
+            This function populates the Arnold shaderWidget instances on the scroll area
+            
+            Args:
+                prefix: prefix to be set for the shaderNames and nodes
+                filesList: list of files containing the same prefix
+                folder_path: folderPath where the function iterates upon
+            Return:
+                None
             """
             widget = ArnoldShaderCreator(prefix,filesList,folder_path)
             self.scrollLayout.addWidget(widget)
@@ -199,7 +241,14 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
 
         def populateVP2(self,prefix,filesList,folder_path):
             """
-            This function populates the shaderWidget instances on the scroll area
+            This function populates the VP2 shaderWidget instances on the scroll area
+            
+            Args:
+                prefix: prefix to be set for the shaderNames and nodes
+                filesList: list of files containing the same prefix
+                folder_path: folderPath where the function iterates upon
+            Return:
+                None
             """
             widget = VP2ShaderCreator(prefix,filesList,folder_path)
             self.scrollLayout.addWidget(widget)
@@ -207,7 +256,12 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
         
         def clearWidgets(self):
             """
-            This Function clears all the shader widgets inthe scrol; area
+            This Function clears all the shader widgets in the scroll area
+            
+            Args:
+                None
+            Return:
+                None
             """
             vp2shaderWidgets = self.findChildren(VP2ShaderCreator)
             if vp2shaderWidgets:
@@ -227,13 +281,34 @@ class ArnoldShaderCreatorWindow(QtWidgets.QWidget):
             
 
 class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMainWindow
+    """
+    This is a ArnoldShaderCreator class that lets us create the Arnold shaderWidget in the scroll area
+    
+    Methods:
+        __init__: This is the Constructor function to initialize layout variables ,dict and also connections for each prefix found.
+        createShader: This function creates a shader and calls the connectTextures() to assign textures to it. If assign and mesh is passed , then it will asign the shader to selected mesh
+        createShaderAndAssign: This Function checks for any selected mesh. If there are any selected mesh, then a shader will be created and assigned
+        connectTextures: This function checks the texturePaths dictionary and connects it to the passed shader if there are any paths
+        connect_file_texture_to_shader: This functions creates a texture and connects it to the given shader based on the type of texture
+        findTexturesPath: This function finds the relevant textures path from the given folder path
+        deleteShaderWidget: This function deletes the widget from the parent UI
+        updateShaderName: This function updates the shader name label based on the given input in the LineEdit Widget
+        setBaseColorPath: This function makes a dialog for the User to pick the Base Color Texture path 
+        setRoughPath: This function makes a dialog for the User to pick the Roughness Texture path 
+        setMetalPath: This function makes a dialog for the User to pick the Metalness Texture path 
+        setNormalPath: This function makes a dialog for the User to pick the Normal Texture path 
+        setDispPath: This function makes a dialog for the User to pick the Displacement Texture path 
 
+    """
 
     def __init__(self,prefix,filesList,folder_path,parent =None):
         """
         This is the Constructor function to initialize layout variables ,dict and also connections for each prefix found.
+        
         Args:
-            None
+            prefix: prefix to be set for the shaderNames and nodes
+            filesList: list of files containing the same prefix
+            folder_path: folderPath where the function iterates upon
         Return:
             None
         """
@@ -290,7 +365,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
             assign: bool to check if shader needs to be assigned
             mesh: mesh to assign the shader to.
         Return:
-            
+            None
         """
         #get the name
         shaderName = self.myUI.lb_shaderName.text()
@@ -439,6 +514,11 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
     def findTexturesPath(self,folder_path):
         """
         This function finds the relevant textures path from the given folder path
+
+        Args:
+            folder_path: path of the folder to iterate upon.
+        Return:
+            None
         """
         # Initialize variables for each texture type
         base_color_path = None
@@ -566,7 +646,12 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
 
     def deleteShaderWidget(self):
         """
-        This function deletes the widget
+        This function deletes the widget from the parent UI
+
+        Args:
+            None
+        Return:
+            None
         """
         self.setParent(None) #remove from the layout
         self.setVisible(False) #make it hidden
@@ -575,6 +660,7 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
     def updateShaderName(self):
         """
         This function updates the shader name label based on the given input in the LineEdit Widget
+        
         Args:
             None
         Return:
@@ -594,6 +680,14 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
             self.myUI.lb_shaderName.setFont(self.defaultFont)
     
     def setBaseColorPath(self):
+        """
+        This function makes a dialog for the User to pick the Base Color Texture path 
+        
+        Args:
+            None
+        Return:
+            None
+        """
         try:
             file = QtWidgets.QFileDialog.getOpenFileName(self,"Choose Base Color Texture" ,dir = self.path)[0]
         except:
@@ -616,6 +710,14 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
 
 
     def setRoughPath(self):
+        """
+        This function makes a dialog for the User to pick the Roughness Texture path 
+        
+        Args:
+            None
+        Return:
+            None
+        """
         try:
             file = QtWidgets.QFileDialog.getOpenFileName(self,"Choose Roughness Texture" ,dir = self.path)[0]
         except:
@@ -638,6 +740,14 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
 
         
     def setMetalPath(self):
+        """
+        This function makes a dialog for the User to pick the Metalness Texture path 
+        
+        Args:
+            None
+        Return:
+            None
+        """
         try:
             file = QtWidgets.QFileDialog.getOpenFileName(self,"Choose Metalness Texture" ,dir = self.path)[0]
         except:
@@ -660,6 +770,14 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
 
 
     def setNormalPath(self):
+        """
+        This function makes a dialog for the User to pick the Normal Texture path 
+        
+        Args:
+            None
+        Return:
+            None
+        """
         try:
             file = QtWidgets.QFileDialog.getOpenFileName(self,"Choose Normal Texture" ,dir = self.path)[0]
         except:
@@ -682,6 +800,14 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
    
 
     def setDispPath(self):
+        """
+        This function makes a dialog for the User to pick the Displacement Texture path 
+        
+        Args:
+            None
+        Return:
+            None
+        """
         try:
             file = QtWidgets.QFileDialog.getOpenFileName(self,"Choose Displacement Texture" ,dir = self.path)[0]
         except:
@@ -703,13 +829,30 @@ class ArnoldShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QM
             self.myUI.lb_displacement.setFont(font)
 
 class VP2ShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMainWindow
+    """
+    This is a VP2haderCreator class that lets us create the VP2 shaderWidget in the scroll area
+    
+    Methods:
+        __init__: This is the Constructor function to initialize layout variables ,dict and also connections for each prefix found.
+        createShader: This function creates a shader and calls the connectTextures() to assign textures to it. If assign and mesh is passed , then it will asign the shader to selected mesh
+        createShaderAndAssign: This Function checks for any selected mesh. If there are any selected mesh, then a shader will be created and assigned
+        connectTextures: This function checks the texturePaths dictionary and connects it to the passed shader if there are any paths
+        connect_file_texture_to_shader: This functions creates a texture and connects it to the given shader based on the type of texture
+        findTexturesPath: This function finds the relevant textures path from the given folder path
+        deleteShaderWidget: This function deletes the widget from the parent UI
+        updateShaderName: This function updates the shader name label based on the given input in the LineEdit Widget
+        setBaseColorPath: This function makes a dialog for the User to pick the Base Color Texture path 
 
+    """
 
     def __init__(self,prefix,filesList,folder_path,parent =None):
         """
         This is the Constructor function to initialize layout variables ,dict and also connections for each prefix found.
+        
         Args:
-            None
+            prefix: prefix to be set for the shaderNames and nodes
+            filesList: list of files containing the same prefix
+            folder_path: folderPath where the function iterates upon
         Return:
             None
         """
@@ -865,6 +1008,11 @@ class VP2ShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMain
     def findTexturesPath(self,folder_path):
         """
         This function finds the relevant textures path from the given folder path
+        
+        Args:
+            folder_path : path of the folder to iterate upon.
+        Return:
+            None
         """
         # Initialize variables for each texture type
         vp2_path = None
@@ -912,7 +1060,12 @@ class VP2ShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMain
 
     def deleteShaderWidget(self):
         """
-        This function deletes the widget
+        This function deletes the widget from the parent UI
+        
+        Args:
+            None
+        Return:
+            None
         """
         self.setParent(None) #remove from the layout
         self.setVisible(False) #make it hidden
@@ -921,6 +1074,7 @@ class VP2ShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMain
     def updateShaderName(self):
         """
         This function updates the shader name label based on the given input in the LineEdit Widget
+        
         Args:
             None
         Return:
@@ -940,6 +1094,14 @@ class VP2ShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMain
             self.myUI.lb_shaderName.setFont(self.defaultFont)
     
     def setBaseColorPath(self):
+        """
+        This function makes a dialog for the User to pick the Base Color Texture path 
+        
+        Args:
+            None
+        Return:
+            None
+        """
         try:
             file = QtWidgets.QFileDialog.getOpenFileName(self,"Choose Base Color Texture" ,dir = self.path)[0]
         except:
@@ -964,9 +1126,14 @@ class VP2ShaderCreator(QtWidgets.QWidget):  # Change to QWidget instead of QMain
 def createArnoldShaderCreatorWindow():
     """
     This function makes an instance of the Arnold Shader Creator Window
+
+    Args:
+        None
+    Return:
+        None
     """
     dock = getDock()
     arnold_shader_creatorWin = ArnoldShaderCreatorWindow(parent=dock)
     dock.layout().addWidget(arnold_shader_creatorWin)
 
-createArnoldShaderCreatorWindow()
+createArnoldShaderCreatorWindow() #call the function to create the Window Class
